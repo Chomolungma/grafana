@@ -350,7 +350,7 @@ func getEdition() string {
 	}
 }
 
-func sendUsageStats() {
+func sendUsageStats(oauthProviders map[string]bool) {
 	if !setting.ReportingEnabled {
 		return
 	}
@@ -360,12 +360,14 @@ func sendUsageStats() {
 	version := strings.Replace(setting.BuildVersion, ".", "_", -1)
 
 	metrics := map[string]interface{}{}
+	auth := map[string]interface{}{}
 	report := map[string]interface{}{
 		"version": version,
 		"metrics": metrics,
 		"os":      runtime.GOOS,
 		"arch":    runtime.GOARCH,
 		"edition": getEdition(),
+		"auth":    auth,
 	}
 
 	statsQuery := models.GetSystemStatsQuery{}
@@ -448,6 +450,15 @@ func sendUsageStats() {
 
 	for _, stats := range anStats.Result {
 		metrics["stats.alert_notifiers."+stats.Type+".count"] = stats.Count
+	}
+
+	auth["anonymous_enabled"] = setting.AnonymousEnabled
+	auth["basic_auth_enabled"] = setting.BasicAuthEnabled
+	auth["ldap_enabled"] = setting.LdapEnabled
+	auth["auth_proxy_enabled"] = setting.AuthProxyEnabled
+
+	for provider, enabled := range oauthProviders {
+		auth["oauth_"+provider+"_enabled"] = enabled
 	}
 
 	out, _ := json.MarshalIndent(report, "", " ")
